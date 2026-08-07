@@ -37,68 +37,63 @@ This is useful when you want a self-hosted Telegram Web experience where the bro
 
 The two projects are separate processes under separate licenses. They communicate over the network only.
 
-## Run with Docker
+## Dokploy Deployment
 
-```sh
-git clone https://github.com/lisyoen/telegram-web-relay.git
-cd telegram-web-relay
-cp .env.example .env
+The GitHub Actions workflow publishes a Docker image to GHCR. During the image build, the latest `telegram-web-relay-client` release is downloaded and unpacked into `/app/client-dist`.
+
+Make the GHCR package public, or configure GHCR registry credentials in Dokploy. Then create a Compose service in Dokploy and paste this file:
+
+```yaml
+services:
+  telegram-web-relay:
+    image: ghcr.io/graypawn/telegram-web-relay:latest
+    environment:
+      - TELEGRAM_API_ID=${TELEGRAM_API_ID}
+      - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - PORT=${PORT:-9087}
+      - V2_DIST_PATH=/app/client-dist
+      - V1_HOST=${V1_HOST:-}
+      - ARCHIVE_DB_PATH=${ARCHIVE_DB_PATH:-/app/db/chat-archive.sqlite}
+      - TARGET_CHATS=${TARGET_CHATS:-}
+      - MAIN_CHATS=${MAIN_CHATS:-}
+    ports:
+      - 9087
+    volumes:
+      - telegram_tdlib_db:/app/tdlib-db
+      - telegram_tdlib_files:/app/tdlib-files
+      - telegram_archive_db:/app/db
+    restart: unless-stopped
+
+volumes:
+  telegram_tdlib_db:
+  telegram_tdlib_files:
+  telegram_archive_db:
 ```
 
-Edit `.env` with your Telegram API credentials from my.telegram.org:
+In the Dokploy environment editor, add at least:
 
 ```env
 TELEGRAM_API_ID=123456
 TELEGRAM_API_HASH=your_api_hash
-SESSION_SECRET=replace-this
-PORT=9087
+SESSION_SECRET=generate-a-long-random-value
 ```
 
-Start the relay:
+The service listens on container port `9087`. Add a Dokploy domain or proxy for that port and use HTTPS before signing in. Do not create or mount a `.env` file in the container.
+
+The relay Docker image is rebuilt and published to `ghcr.io/graypawn/telegram-web-relay:latest` when changes are pushed to `main`. The image build automatically tracks the latest client release.
+
+## Local Docker Build
+
+To build locally with a specific client release:
 
 ```sh
-docker compose up -d
+docker build \
+  --build-arg CLIENT_VERSION=12.0.18 \
+  -t telegram-web-relay:local .
 ```
 
-Open `http://localhost:9087` in your browser. TDLib session data, downloaded files, and the optional archive database are persisted under `./data/`.
-
-To serve a prebuilt v2 client, copy or mount its `dist/` directory as `./client-dist` and set `V2_DIST_PATH=/app/client-dist` in `.env`; `docker-compose.yml` includes the matching commented volume line.
-
-## Quickstart
-
-### 1. Build the Client
-
-```sh
-git clone https://github.com/lisyoen/telegram-web-relay-client.git
-cd telegram-web-relay-client
-cp .env.example .env
-npm install
-npm run build:production
-```
-
-The client build is written to `telegram-web-relay-client/dist`.
-
-### 2. Start the Relay
-
-```sh
-git clone https://github.com/lisyoen/telegram-web-relay.git
-cd telegram-web-relay
-cp .env.example .env
-npm install
-npm start
-```
-
-Edit `.env` before starting:
-
-```env
-TELEGRAM_API_ID=123456
-TELEGRAM_API_HASH=your_api_hash
-SESSION_SECRET=replace-this
-PORT=9087
-V2_DIST_PATH=../telegram-web-relay-client/dist
-```
-
-Open `http://localhost:9087` and sign in with your Telegram account.
+The image contains the client under `/app/client-dist` and does not require the client source repository.
 
 ## Configuration
 
@@ -110,7 +105,7 @@ All settings are environment variables.
 | `TELEGRAM_API_HASH` | yes | empty | Telegram API hash from my.telegram.org |
 | `SESSION_SECRET` | recommended | development fallback | Express session cookie secret |
 | `PORT` | no | `9087` | HTTP port |
-| `V2_DIST_PATH` | no | `../telegram-web-relay-client/dist` | Built client `dist/` path |
+| `V2_DIST_PATH` | no | `/app/client-dist` in Docker | Built client `dist/` path |
 | `V1_HOST` | no | empty | If set and the request host matches, serve the legacy static UI in `public/` |
 | `ARCHIVE_DB_PATH` | no | `./db/chat-archive.sqlite` | SQLite path for optional chat archive |
 | `TARGET_CHATS` | no | empty | Comma-separated chat IDs for optional archive collection |

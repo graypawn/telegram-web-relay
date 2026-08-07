@@ -1,14 +1,25 @@
 services:
   telegram-web-relay:
-    build: .
-    env_file: .env
+    image: ghcr.io/graypawn/telegram-web-relay:latest
+    environment:
+      - TELEGRAM_API_ID=${TELEGRAM_API_ID}
+      - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - PORT=${PORT:-9087}
+      - V2_DIST_PATH=/app/client-dist
+      - V1_HOST=${V1_HOST:-}
+      - ARCHIVE_DB_PATH=${ARCHIVE_DB_PATH:-/app/db/chat-archive.sqlite}
+      - TARGET_CHATS=${TARGET_CHATS:-}
+      - MAIN_CHATS=${MAIN_CHATS:-}
     ports:
-      - "9087:9087"
+      - 9087
     volumes:
-      - ./data/tdlib-db:/app/tdlib-db
-      - ./data/tdlib-files:/app/tdlib-files
-      - ./data/db:/app/db
-      # To serve a prebuilt v2 client, mount its dist directory and set:
-      # - ./client-dist:/app/client-dist:ro
-      # V2_DIST_PATH=/app/client-dist
+      - telegram_tdlib_db:/app/tdlib-db
+      - telegram_tdlib_files:/app/tdlib-files
+      - telegram_archive_db:/app/db
     restart: unless-stopped
+
+volumes:
+  telegram_tdlib_db:
+  telegram_tdlib_files:
+  telegram_archive_db:
