@@ -3853,6 +3853,52 @@ io.on('connection', (socket) => {
           }
           break;
         }
+        case 'fetchCountryList': {
+          try {
+            const countryResult = await client.invoke({ _: 'getCountries' });
+            const countries = (countryResult && countryResult.countries || [])
+              .filter((country) => !country.is_hidden);
+            const phoneCodes = [];
+            const general = [];
+
+            for (const country of countries) {
+              const entries = (country.calling_codes || []).map((callingCode) => ({
+                isHidden: false,
+                iso2: country.country_code || '',
+                defaultName: country.english_name || country.name || '',
+                name: country.name || country.english_name || '',
+                countryCode: String(callingCode),
+                prefixes: [],
+                patterns: [],
+              }));
+              phoneCodes.push(...entries);
+              if (entries[0]) general.push(entries[0]);
+            }
+
+            const byName = (left, right) => (
+              (left.name || left.defaultName).localeCompare(right.name || right.defaultName)
+            );
+            phoneCodes.sort(byName);
+            general.sort(byName);
+            result = { phoneCodes, general };
+            console.log('[fetchCountryList] countries=', countries.length, 'phoneCodes=', phoneCodes.length);
+          } catch (e) {
+            console.error('[fetchCountryList] error:', e.message);
+            result = { phoneCodes: [], general: [] };
+          }
+          break;
+        }
+        case 'fetchNearestCountry': {
+          try {
+            const countryResult = await client.invoke({ _: 'getCountryCode' });
+            result = countryResult && countryResult.text || undefined;
+            console.log('[fetchNearestCountry] country=', result || 'unknown');
+          } catch (e) {
+            console.error('[fetchNearestCountry] error:', e.message);
+            result = undefined;
+          }
+          break;
+        }
         case 'restartAuthWithQr': {
           try {
             await ACCOUNTS[activeAccountId].client.invoke({
