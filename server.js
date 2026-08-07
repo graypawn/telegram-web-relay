@@ -1361,9 +1361,28 @@ function handleUpdate(update, accountId = 'main') {
 }
 
 // 인증 상태 처리
+function buildAuthStatePayload(state, accountId) {
+  const payload = { state: state._, account: accountId };
+  if (state._ !== 'authorizationStateWaitOtherDeviceConfirmation' || !state.link) {
+    return payload;
+  }
+
+  const token = /[?&]token=([^&]+)/.exec(state.link)?.[1];
+  if (!token) return payload;
+
+  return {
+    ...payload,
+    state: 'authorizationStateWaitQrCode',
+    qrCode: {
+      token,
+      expires: Math.floor(Date.now() / 1000) + 60,
+    },
+  };
+}
+
 function handleAuthState(state, accountId = activeAccountId) {
   console.log(`Auth state (${accountId}):`, state._);
-  io.emit('authState', { state: state._, account: accountId });
+  io.emit('authState', buildAuthStatePayload(state, accountId));
 
   switch (state._) {
     case 'authorizationStateWaitPhoneNumber':
@@ -1436,7 +1455,7 @@ io.on('connection', (socket) => {
 
   // 현재 인증 상태 전송
   if (authState) {
-    socket.emit('authState', { state: authState._ });
+    socket.emit('authState', buildAuthStatePayload(authState, activeAccountId));
     if (isAuthorized) socket.emit('authorized');
   }
 
@@ -1444,7 +1463,7 @@ io.on('connection', (socket) => {
   socket.on('getAuthState', () => {
     console.log('[getAuthState] requested, current:', authState?._);
     if (authState) {
-      socket.emit('authState', { state: authState._ });
+      socket.emit('authState', buildAuthStatePayload(authState, activeAccountId));
     }
   });
 
@@ -1569,7 +1588,7 @@ io.on('connection', (socket) => {
       const a = ACCOUNTS[account];
       // 현재 authState 가 있으면 클라이언트에 즉시 통보
       if (a.authState) {
-        io.emit('authState', { state: a.authState._, account });
+        io.emit('authState', buildAuthStatePayload(a.authState, account));
         if (a.isAuthorized) io.emit('authorized', { account });
       }
       io.emit('accountSwitched', { account, label: a.label });
@@ -3831,6 +3850,19 @@ io.on('connection', (socket) => {
           } catch (e) {
             console.error('[relay readAllReactions] error:', e.message);
             result = null;
+          }
+          break;
+        }
+        case 'restartAuthWithQr': {
+          try {
+            await ACCOUNTS[activeAccountId].client.invoke({
+              _: 'requestQrCodeAuthentication',
+              other_user_ids: [],
+            });
+            result = true;
+          } catch (e) {
+            console.error('[restartAuthWithQr] error:', e.message);
+            result = false;
           }
           break;
         }
