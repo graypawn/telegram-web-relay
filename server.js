@@ -2527,7 +2527,19 @@ io.on('connection', (socket) => {
         case 'fetchMessages': {
           const chatId = (params && params.chat && params.chat.id) || (params && params.chatId);
           const numChatId = Number(chatId);
-          const msgs = await client.invoke({
+          if (!Number.isSafeInteger(numChatId)) {
+            throw new Error(`Invalid chat ID for history: ${chatId}`);
+          }
+
+          // A freshly restarted TDLib instance can return only its local cache
+          // until the chat is opened. The legacy getMessages path already does
+          // this; keep the API bridge on the same initialization path.
+          if (!(params && params.offsetId)) {
+            await client.invoke({ _: 'openChat', chat_id: numChatId });
+            await new Promise((resolve) => setTimeout(resolve, 300));
+          }
+
+          let msgs = await client.invoke({
             '@type': 'getChatHistory',
             chat_id: numChatId,
             from_message_id: (params && params.offsetId) || 0,
@@ -2535,6 +2547,22 @@ io.on('connection', (socket) => {
             limit: (params && params.limit) || 30,
             only_local: false
           });
+
+          // TDLib may finish hydrating the remote history just after openChat.
+          // Retry once so the initial viewport is not permanently empty.
+          if (!(params && params.offsetId) && !msgs?.messages?.length) {
+            await new Promise((resolve) => setTimeout(resolve, 200));
+            msgs = await client.invoke({
+              '@type': 'getChatHistory',
+              chat_id: numChatId,
+              from_message_id: 0,
+              offset: (params && params.addOffset) || 0,
+              limit: (params && params.limit) || 30,
+              only_local: false
+            });
+          }
+
+          console.log(`[fetchMessages] chatId=${numChatId}, offsetId=${params?.offsetId || 0}, count=${msgs?.messages?.length || 0}`);
           const apiMessages = [];
           for (const m of ((msgs && msgs.messages) || [])) {
             try { await maybeFlattenRich(m, client); }
