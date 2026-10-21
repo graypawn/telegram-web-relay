@@ -46,7 +46,7 @@ GHCR 패키지를 public으로 만들거나 Dokploy에 GHCR registry 인증을 �
 ```yaml
 services:
   telegram-web-relay:
-    image: ghcr.io/graypawn/telegram-web-relay:12.0.20-relay.1-1
+    image: ghcr.io/graypawn/telegram-web-relay:12.0.20-relay.2-1
     environment:
       - TELEGRAM_API_ID=${TELEGRAM_API_ID}
       - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
@@ -81,7 +81,7 @@ SESSION_SECRET=긴_랜덤_문자열
 
 컨테이너 포트는 `9087`입니다. Dokploy에서 해당 포트에 도메인 또는 proxy를 연결하고, 로그인 전 HTTPS를 사용하십시오. 컨테이너 안에 `.env` 파일을 만들거나 mount할 필요가 없습니다.
 
-일치하는 Git 버전 태그(예: `v12.0.20-relay.1-1`)를 push하면 Docker 이미지가 배포됩니다. 각 릴리스는 `ghcr.io/graypawn/telegram-web-relay:12.0.20-relay.1-1`로 사용할 수 있으며, `latest` 태그도 동일한 이미지로 갱신됩니다. 포함되는 client 버전은 Dockerfile의 `CLIENT_VERSION`으로 고정합니다.
+일치하는 Git 버전 태그(예: `v12.0.20-relay.2-1`)를 push하면 Docker 이미지가 배포됩니다. 각 릴리스는 `ghcr.io/graypawn/telegram-web-relay:12.0.20-relay.2-1`로 사용할 수 있으며, `latest` 태그도 동일한 이미지로 갱신됩니다. 포함되는 client 버전은 Dockerfile의 `CLIENT_VERSION`으로 고정합니다.
 
 ## 로컬 Docker 빌드
 
@@ -89,7 +89,7 @@ SESSION_SECRET=긴_랜덤_문자열
 
 ```sh
 docker build \
-  --build-arg CLIENT_VERSION=12.0.20-relay.1 \
+  --build-arg CLIENT_VERSION=12.0.20-relay.2 \
   -t telegram-web-relay:local .
 ```
 

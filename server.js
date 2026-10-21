@@ -2561,7 +2561,19 @@ io.on('connection', (socket) => {
             }
             apiMessages.push(apiMsg);
           }
-          result = { messages: apiMessages, users: [], chats: [], totalCount: (msgs && msgs.total_count) || apiMessages.length };
+          // Match telegram-tt's fetchMessages result shape. In particular,
+          // current clients consume `count` and iterate `topics`; omitting
+          // topics aborts state publication after history has been loaded.
+          const count = Number.isFinite(msgs?.total_count) ? msgs.total_count : apiMessages.length;
+          result = {
+            messages: apiMessages,
+            users: [],
+            chats: [],
+            count,
+            topics: [],
+            // Keep the legacy field for older bundled clients during rollout.
+            totalCount: count,
+          };
           break;
         }
         case 'fetchCurrentUser': {
