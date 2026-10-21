@@ -2478,10 +2478,29 @@ io.on('connection', (socket) => {
           )));
           // Build lastMessageByChatId
           const lastMessageByChatId = {};
+          // v20 stores main-thread metadata separately from the chat object.
+          // Without these records the client can receive a history response
+          // but cannot persist its listed IDs or viewport for that chat.
+          const threadInfos = [];
+          const threadReadStatesById = {};
           const messages = [];
           chats.forEach(c => {
+            const chatId = String(c.id);
+            threadInfos.push({
+              isCommentsInfo: false,
+              chatId,
+              threadId: -1,
+              lastMessageId: c.last_message?.id,
+            });
+            threadReadStatesById[chatId] = {
+              unreadCount: c.unread_count || 0,
+              unreadMentionsCount: c.unread_mention_count || 0,
+              unreadReactionsCount: c.unread_reaction_count || 0,
+              lastReadInboxMessageId: c.last_read_inbox_message_id || 0,
+              lastReadOutboxMessageId: c.last_read_outbox_message_id || 0,
+            };
             if (c.last_message) {
-              lastMessageByChatId[String(c.id)] = c.last_message.id;
+              lastMessageByChatId[chatId] = c.last_message.id;
               // v0.58 [039]: 채팅 목록 lastMessage 도 히스토리 경로(fetchMessages)와 동일하게
               // buildSharedApiMessage 로 빌드한다. 기존 인라인 빌더는 content.text 만 읽어
               // richMessage(content.message, 텍스트 없음)·미디어를 빈 콘텐츠로 만들었고, v2 가
@@ -2520,6 +2539,8 @@ io.on('connection', (socket) => {
             notifyExceptionById: {},
             messages,
             lastMessageByChatId,
+            threadInfos,
+            threadReadStatesById,
             totalChatCount: stringChatIds.length,
           };
           break;
