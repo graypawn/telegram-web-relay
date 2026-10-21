@@ -46,7 +46,7 @@ Make the GHCR package public, or configure GHCR registry credentials in Dokploy.
 ```yaml
 services:
   telegram-web-relay:
-    image: ghcr.io/graypawn/telegram-web-relay:12.0.20-relay.4-1
+    image: ghcr.io/graypawn/telegram-web-relay:12.0.20-relay.5-1
     environment:
       - TELEGRAM_API_ID=${TELEGRAM_API_ID}
       - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
@@ -81,7 +81,7 @@ SESSION_SECRET=generate-a-long-random-value
 
 The service listens on container port `9087`. Add a Dokploy domain or proxy for that port and use HTTPS before signing in. Do not create or mount a `.env` file in the container.
 
-The relay Docker image is published when a matching Git version tag is pushed (for example, `v12.0.20-relay.4-1`). Each release is available at `ghcr.io/graypawn/telegram-web-relay:12.0.20-relay.4-1`; the `latest` tag is updated to the same image. The bundled client version is fixed by `CLIENT_VERSION` in the Dockerfile.
+The relay Docker image is published when a matching Git version tag is pushed (for example, `v12.0.20-relay.5-1`). Each release is available at `ghcr.io/graypawn/telegram-web-relay:12.0.20-relay.5-1`; the `latest` tag is updated to the same image. The bundled client version is fixed by `CLIENT_VERSION` in the Dockerfile.
 
 ## Local Docker Build
 
@@ -89,7 +89,7 @@ To build locally with a specific client release:
 
 ```sh
 docker build \
-  --build-arg CLIENT_VERSION=12.0.20-relay.4 \
+  --build-arg CLIENT_VERSION=12.0.20-relay.5 \
   -t telegram-web-relay:local .
 ```
 
