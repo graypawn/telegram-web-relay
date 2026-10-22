@@ -1,5 +1,7 @@
 # telegram-web-relay v0.1.0 Release Notes
 
+> Historical document: drafted for the v0.1.0 public launch. The project has since moved to the `graypawn` organization; the links below point to the current canonical repositories.
+
 한국어는 아래에 있습니다.
 
 ## English
@@ -19,7 +21,9 @@
 
 Use this server with `telegram-web-relay-client`:
 
-https://github.com/lisyoen/telegram-web-relay-client
+https://github.com/graypawn/telegram-web-relay-client
+
+`graypawn/telegram-web-relay-client` is a fork of `lisyoen/telegram-web-relay-client`, itself based on [Telegram Web A / Telegram-tt](https://github.com/Ajaxy/telegram-tt).
 
 ### Upgrade Notes
 
@@ -42,7 +46,9 @@ This is the first public release. Treat it as an early self-hosted release and r
 
 이 서버는 `telegram-web-relay-client`와 함께 사용합니다.
 
-https://github.com/lisyoen/telegram-web-relay-client
+https://github.com/graypawn/telegram-web-relay-client
+
+`graypawn/telegram-web-relay-client`는 `lisyoen/telegram-web-relay-client`의 포크이며, 다시 [Telegram Web A / Telegram-tt](https://github.com/Ajaxy/telegram-tt)를 기반으로 합니다.
 
 ### 업그레이드 노트
 

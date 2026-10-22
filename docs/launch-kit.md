@@ -1,5 +1,7 @@
 # Launch Kit: telegram-web-relay
 
+> Historical document: drafted for the v0.1.0 public launch. The project has since moved to the `graypawn` organization; the links below point to the current canonical repositories. The client lineage is `Ajaxy/telegram-tt` → `lisyoen/telegram-web-relay-client` → `graypawn/telegram-web-relay-client`.
+
 한국어는 아래에 있습니다.
 
 ## English
@@ -27,9 +29,9 @@ I built telegram-web-relay, a self-hosted Telegram Web relay server powered by T
 
 The idea is simple: the server owns the Telegram connection and authenticated TDLib session, while the browser UI only talks to your relay over HTTP and Socket.IO. The companion client is a fork of Telegram Web A / Telegram-tt adapted for the relay protocol.
 
-Server: https://github.com/lisyoen/telegram-web-relay
-Client: https://github.com/lisyoen/telegram-web-relay-client
-Release: https://github.com/lisyoen/telegram-web-relay/releases/tag/v0.1.0
+Server: https://github.com/graypawn/telegram-web-relay
+Client: https://github.com/graypawn/telegram-web-relay-client
+Release: https://github.com/graypawn/telegram-web-relay/releases/tag/v0.1.0
 
 It is early, but it already includes bilingual docs, PM2 examples, Docker/Compose examples, and a quickstart flow.
 ```
@@ -41,9 +43,9 @@ I released telegram-web-relay, a self-hosted Telegram Web relay server powered b
 
 It runs the Telegram session on your own server and serves a browser UI that communicates with the relay over Socket.IO. The client is a Telegram Web A / Telegram-tt fork adapted for this relay.
 
-Server: https://github.com/lisyoen/telegram-web-relay
-Client: https://github.com/lisyoen/telegram-web-relay-client
-Release: https://github.com/lisyoen/telegram-web-relay/releases/tag/v0.1.0
+Server: https://github.com/graypawn/telegram-web-relay
+Client: https://github.com/graypawn/telegram-web-relay-client
+Release: https://github.com/graypawn/telegram-web-relay/releases/tag/v0.1.0
 
 Feedback from self-hosters and Telegram client hackers would be very welcome.
 ```
@@ -71,9 +73,9 @@ TDLib 기반 self-hosted Telegram Web relay를 오픈소스로 공개했습니�
 
 서버가 Telegram 연결과 인증 세션을 보유하고, 브라우저 UI는 HTTP/Socket.IO로 relay 서버와만 통신하는 구조입니다. 클라이언트는 Telegram Web A / Telegram-tt를 relay 프로토콜에 맞게 수정한 포크입니다.
 
-Server: https://github.com/lisyoen/telegram-web-relay
-Client: https://github.com/lisyoen/telegram-web-relay-client
-Release: https://github.com/lisyoen/telegram-web-relay/releases/tag/v0.1.0
+Server: https://github.com/graypawn/telegram-web-relay
+Client: https://github.com/graypawn/telegram-web-relay-client
+Release: https://github.com/graypawn/telegram-web-relay/releases/tag/v0.1.0
 
 아직 초기 공개 버전이라 피드백을 받고 싶습니다. self-hosted Telegram Web, TDLib, Telegram client 구조에 관심 있는 분들께 도움이 되면 좋겠습니다.
 ```
@@ -85,7 +87,7 @@ TDLib 기반 self-hosted Telegram Web relay를 공개했습니다.
 
 Telegram 연결은 서버에서 처리하고, 브라우저 UI는 Socket.IO로 내 relay와 통신합니다. 서버는 MIT, 클라이언트는 Telegram Web A / Telegram-tt 기반 GPL-3.0-or-later입니다.
 
-https://github.com/lisyoen/telegram-web-relay
-https://github.com/lisyoen/telegram-web-relay-client
-https://github.com/lisyoen/telegram-web-relay/releases/tag/v0.1.0
+https://github.com/graypawn/telegram-web-relay
+https://github.com/graypawn/telegram-web-relay-client
+https://github.com/graypawn/telegram-web-relay/releases/tag/v0.1.0
 ```

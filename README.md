@@ -1,6 +1,8 @@
 # telegram-web-relay
 
-[![Release](https://img.shields.io/github/v/release/lisyoen/telegram-web-relay?style=flat-square)](https://github.com/lisyoen/telegram-web-relay/releases)
+> **AI-assisted fork:** Changes in this fork were made with AI-assisted development tools.
+
+[![Release](https://img.shields.io/github/v/release/graypawn/telegram-web-relay?style=flat-square)](https://github.com/graypawn/telegram-web-relay/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](./LICENSE)
 [![Node.js](https://img.shields.io/badge/node.js-22+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
 
@@ -8,7 +10,7 @@ English | [한국어](./README.ko.md)
 
 Self-hosted Telegram Web relay powered by TDLib. Run Telegram connectivity on a server you control, then use a browser UI that talks only to your relay over HTTP and Socket.IO.
 
-This repository is the **server**. The browser UI lives in [telegram-web-relay-client](https://github.com/lisyoen/telegram-web-relay-client).
+This repository is the **server**. The browser UI lives in [telegram-web-relay-client](https://github.com/graypawn/telegram-web-relay-client), which is a fork of [lisyoen/telegram-web-relay-client](https://github.com/lisyoen/telegram-web-relay-client), itself based on [Telegram Web A / Telegram-tt](https://github.com/Ajaxy/telegram-tt).
 
 ![telegram-web-relay architecture](./docs/architecture.svg)
 
@@ -28,25 +30,46 @@ Browser UI  --HTTP + Socket.IO-->  telegram-web-relay  --TDLib/MTProto-->  Teleg
 
 This is useful when you want a self-hosted Telegram Web experience where the browser does not need to connect to Telegram API endpoints directly. The relay host owns the Telegram session, static assets, file downloads, update stream, and optional chat archive.
 
-## Repository Split
+## Repository Structure & Fork Lineage
 
-| Repository | Role | License |
-| --- | --- | --- |
-| `telegram-web-relay` | Node.js TDLib relay server, static host for the web UI | MIT |
-| [`telegram-web-relay-client`](https://github.com/lisyoen/telegram-web-relay-client) | Telegram Web A / Telegram-tt fork rewritten to use this relay over Socket.IO | GPL-3.0-or-later |
+Two lineages converge in this organization. The browser client is a fork of Telegram-tt; the relay server is a fork of the original relay server. The built client is bundled into the relay Docker image.
 
-The two projects are separate processes under separate licenses. They communicate over the network only.
+```
+Client lineage:
+Telegram Web A (Telegram-tt)  ← upstream
+    ↑ fork
+lisyoen/telegram-web-relay-client
+    ↑ fork
+graypawn/telegram-web-relay-client  ← browser UI
+
+Server lineage:
+lisyoen/telegram-web-relay
+    ↑ fork
+graypawn/telegram-web-relay         ← TDLib relay server (this repo)
+```
+
+| Repository | Role | License | Fork Status |
+| --- | --- | --- | --- |
+| `graypawn/telegram-web-relay` | Node.js TDLib relay server, static host for the web UI | MIT | Fork of `lisyoen/telegram-web-relay` |
+| [`graypawn/telegram-web-relay-client`](https://github.com/graypawn/telegram-web-relay-client) | Telegram Web A / Telegram-tt fork adapted for Socket.IO relay | GPL-3.0-or-later | Fork of `lisyoen/telegram-web-relay-client` |
+| `lisyoen/telegram-web-relay` | Original TDLib relay server | MIT | — (original) |
+| `lisyoen/telegram-web-relay-client` | Original relay client fork | GPL-3.0-or-later | Fork of `Ajaxy/telegram-tt` |
+| `Ajaxy/telegram-tt` | Telegram Web A (upstream) | GPL-3.0-or-later | Upstream |
+
+The two projects in this organization (`graypawn/telegram-web-relay` and `graypawn/telegram-web-relay-client`) are separate processes under separate licenses. They communicate over the network only.
 
 ## Dokploy Deployment
 
 The GitHub Actions workflow publishes a Docker image to GHCR. During the image build, the fixed `telegram-web-relay-client` release is downloaded and unpacked into `/app/client-dist`.
+
+**Current version**: `12.0.29-relay.1-1` (server) bundling `12.0.29-relay.1` (client)
 
 Make the GHCR package public, or configure GHCR registry credentials in Dokploy. Then create a Compose service in Dokploy and paste this file:
 
 ```yaml
 services:
   telegram-web-relay:
-    image: ghcr.io/graypawn/telegram-web-relay:12.0.20-relay.6-1
+    image: ghcr.io/graypawn/telegram-web-relay:12.0.29-relay.1-1
     environment:
       - TELEGRAM_API_ID=${TELEGRAM_API_ID}
       - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
@@ -81,7 +104,7 @@ SESSION_SECRET=generate-a-long-random-value
 
 The service listens on container port `9087`. Add a Dokploy domain or proxy for that port and use HTTPS before signing in. Do not create or mount a `.env` file in the container.
 
-The relay Docker image is published when a matching Git version tag is pushed (for example, `v12.0.20-relay.6-1`). Each release is available at `ghcr.io/graypawn/telegram-web-relay:12.0.20-relay.6-1`; the `latest` tag is updated to the same image. The bundled client version is fixed by `CLIENT_VERSION` in the Dockerfile.
+The relay Docker image is published when a matching Git version tag is pushed (for example, `v12.0.29-relay.1-1`). Each release is available at `ghcr.io/graypawn/telegram-web-relay:12.0.29-relay.1-1`; the `latest` tag is updated to the same image. The bundled client version is fixed by `CLIENT_VERSION` in the Dockerfile.
 
 ## Local Docker Build
 
@@ -89,7 +112,7 @@ To build locally with a specific client release:
 
 ```sh
 docker build \
-  --build-arg CLIENT_VERSION=12.0.20-relay.6 \
+  --build-arg CLIENT_VERSION=12.0.29-relay.1 \
   -t telegram-web-relay:local .
 ```
 
@@ -129,8 +152,8 @@ Native modules such as `better-sqlite3`, `tdl`, and `prebuilt-tdlib` must match 
 
 ## Launch Materials
 
-- Release note draft: [docs/release-v0.1.0.md](./docs/release-v0.1.0.md)
-- Launch post drafts: [docs/launch-kit.md](./docs/launch-kit.md)
+- Release note draft: [docs/release-v0.1.0.md](./docs/release-v0.1.0.md) *(historical)*
+- Launch post drafts: [docs/launch-kit.md](./docs/launch-kit.md) *(historical)*
 - Issue bot guide: [docs/issue-bot.md](./docs/issue-bot.md)
 
 ## Issue Bot
@@ -141,4 +164,4 @@ New issues receive an automated bilingual triage response and the `needs-triage`
 
 [MIT](./LICENSE) (c) ChangYeon Lee.
 
-The browser client is a separate GPL-3.0-or-later project. See [telegram-web-relay-client](https://github.com/lisyoen/telegram-web-relay-client).
+The browser client is a separate GPL-3.0-or-later project. See [telegram-web-relay-client](https://github.com/graypawn/telegram-web-relay-client).
