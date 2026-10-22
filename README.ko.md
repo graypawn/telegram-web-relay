@@ -1,6 +1,8 @@
 # telegram-web-relay
 
-[![Release](https://img.shields.io/github/v/release/lisyoen/telegram-web-relay?style=flat-square)](https://github.com/lisyoen/telegram-web-relay/releases)
+> **AI 보조 포크:** 이 포크의 변경 사항은 AI 보조 개발 도구를 사용해 수정되었습니다.
+
+[![Release](https://img.shields.io/github/v/release/graypawn/telegram-web-relay?style=flat-square)](https://github.com/graypawn/telegram-web-relay/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](./LICENSE)
 [![Node.js](https://img.shields.io/badge/node.js-22+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
 
@@ -8,7 +10,7 @@
 
 TDLib 기반 self-hosted Telegram Web relay입니다. 텔레그램 연결은 사용자가 관리하는 서버에서 처리하고, 브라우저 UI는 HTTP와 Socket.IO로 relay 서버에만 접속합니다.
 
-이 저장소는 **서버**입니다. 브라우저 UI는 [telegram-web-relay-client](https://github.com/lisyoen/telegram-web-relay-client)에 있습니다.
+이 저장소는 **서버**입니다. 브라우저 UI는 [telegram-web-relay-client](https://github.com/graypawn/telegram-web-relay-client)에 있으며, 이 프로젝트는 [lisyoen/telegram-web-relay-client](https://github.com/lisyoen/telegram-web-relay-client)의 포크이고, 다시 [Telegram Web A / Telegram-tt](https://github.com/Ajaxy/telegram-tt)를 기반으로 합니다.
 
 ![telegram-web-relay 구조](./docs/architecture.svg)
 
@@ -28,18 +30,39 @@ Saved Messages demo, Korean UI.
 
 브라우저가 텔레그램 API 엔드포인트에 직접 연결하지 않아도 되는 self-hosted Telegram Web 환경이 필요할 때 사용할 수 있습니다. relay 서버는 텔레그램 세션, 정적 파일 서빙, 파일 다운로드, 업데이트 스트림, 선택적 채팅 아카이브를 담당합니다.
 
-## 저장소 구성
+## 저장소 구성 및 포크 계보
 
-| 저장소 | 역할 | 라이선스 |
-| --- | --- | --- |
-| `telegram-web-relay` | Node.js TDLib relay 서버, 웹 UI 정적 파일 호스트 | MIT |
-| [`telegram-web-relay-client`](https://github.com/lisyoen/telegram-web-relay-client) | Socket.IO relay를 사용하도록 수정한 Telegram Web A / Telegram-tt 포크 | GPL-3.0-or-later |
+이 조직에는 두 계보가 모입니다. 브라우저 클라이언트는 Telegram-tt의 포크이고, relay 서버는 원본 relay 서버의 포크입니다. 빌드된 클라이언트는 relay Docker 이미지에 번들됩니다.
 
-두 프로젝트는 서로 다른 라이선스를 가진 별도 프로세스이며, 네트워크를 통해서만 통신합니다.
+```
+클라이언트 계보:
+Telegram Web A (Telegram-tt)  ← upstream
+    ↑ fork
+lisyoen/telegram-web-relay-client
+    ↑ fork
+graypawn/telegram-web-relay-client  ← 브라우저 UI
+
+서버 계보:
+lisyoen/telegram-web-relay
+    ↑ fork
+graypawn/telegram-web-relay         ← TDLib relay 서버 (이 저장소)
+```
+
+| 저장소 | 역할 | 라이선스 | 포크 상태 |
+| --- | --- | --- | --- |
+| `graypawn/telegram-web-relay` | Node.js TDLib relay 서버, 웹 UI 정적 파일 호스트 | MIT | `lisyoen/telegram-web-relay`의 포크 |
+| [`graypawn/telegram-web-relay-client`](https://github.com/graypawn/telegram-web-relay-client) | Socket.IO relay를 사용하도록 수정한 Telegram Web A / Telegram-tt 포크 | GPL-3.0-or-later | `lisyoen/telegram-web-relay-client`의 포크 |
+| `lisyoen/telegram-web-relay` | 원본 TDLib relay 서버 | MIT | — (원본) |
+| `lisyoen/telegram-web-relay-client` | 원본 relay 클라이언트 포크 | GPL-3.0-or-later | `Ajaxy/telegram-tt`의 포크 |
+| `Ajaxy/telegram-tt` | Telegram Web A (upstream) | GPL-3.0-or-later | Upstream |
+
+이 조직의 두 프로젝트(`graypawn/telegram-web-relay`와 `graypawn/telegram-web-relay-client`)는 서로 다른 라이선스를 가진 별도 프로세스이며, 네트워크를 통해서만 통신합니다.
 
 ## Dokploy 배포
 
 GitHub Actions가 GHCR에 Docker 이미지를 올립니다. 이미지 빌드 중 고정된 `telegram-web-relay-client` 릴리즈를 받아 `/app/client-dist`에 압축 해제합니다.
+
+**현재 버전**: `12.0.20-relay.6-1` (서버) / `12.0.20-relay.6` (클라이언트 번들)
 
 GHCR 패키지를 public으로 만들거나 Dokploy에 GHCR registry 인증을 설정한 뒤, Dokploy Compose 서비스에 아래 YAML을 그대로 붙여 넣으십시오.
 
@@ -129,8 +152,8 @@ npm start
 
 ## 홍보 자료
 
-- 릴리스 노트 초안: [docs/release-v0.1.0.md](./docs/release-v0.1.0.md)
-- 홍보문 초안: [docs/launch-kit.md](./docs/launch-kit.md)
+- 릴리스 노트 초안: [docs/release-v0.1.0.md](./docs/release-v0.1.0.md) *(과거 문서)*
+- 홍보문 초안: [docs/launch-kit.md](./docs/launch-kit.md) *(과거 문서)*
 - 이슈 봇 가이드: [docs/issue-bot.md](./docs/issue-bot.md)
 
 ## 이슈 봇
@@ -141,4 +164,4 @@ npm start
 
 [MIT](./LICENSE) (c) ChangYeon Lee.
 
-브라우저 클라이언트는 GPL-3.0-or-later로 배포되는 별도 프로젝트입니다. [telegram-web-relay-client](https://github.com/lisyoen/telegram-web-relay-client)를 참조하십시오.
+브라우저 클라이언트는 GPL-3.0-or-later로 배포되는 별도 프로젝트입니다. [telegram-web-relay-client](https://github.com/graypawn/telegram-web-relay-client)를 참조하십시오.

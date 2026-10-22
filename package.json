@@ -32,10 +32,10 @@
   "author": "ChangYeon Lee",
   "repository": {
     "type": "git",
-    "url": "https://github.com/lisyoen/telegram-web-relay"
+    "url": "https://github.com/graypawn/telegram-web-relay"
   },
-  "homepage": "https://github.com/lisyoen/telegram-web-relay#readme",
+  "homepage": "https://github.com/graypawn/telegram-web-relay#readme",
   "bugs": {
-    "url": "https://github.com/lisyoen/telegram-web-relay/issues"
+    "url": "https://github.com/graypawn/telegram-web-relay/issues"
   }
 }
