@@ -58,13 +58,15 @@ graypawn/telegram-web-relay         ← TDLib relay server (this repo)
 
 The two projects in this organization (`graypawn/telegram-web-relay` and `graypawn/telegram-web-relay-client`) are separate processes under separate licenses. They communicate over the network only.
 
-## Dokploy Deployment
+## Docker Deployment
 
 The GitHub Actions workflow publishes a Docker image to GHCR. During the image build, the fixed `telegram-web-relay-client` release is downloaded and unpacked into `/app/client-dist`.
 
 **Current version**: `12.0.29-relay.1-1` (server) bundling `12.0.29-relay.1` (client)
 
-Make the GHCR package public, or configure GHCR registry credentials in Dokploy. Then create a Compose service in Dokploy and paste this file:
+### Using GHCR image with Docker Compose
+
+Create a `docker-compose.yml`:
 
 ```yaml
 services:
@@ -74,14 +76,14 @@ services:
       - TELEGRAM_API_ID=${TELEGRAM_API_ID}
       - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
       - SESSION_SECRET=${SESSION_SECRET}
-      - PORT=${PORT:-9087}
+      - PORT=9087
       - V2_DIST_PATH=/app/client-dist
       - V1_HOST=${V1_HOST:-}
-      - ARCHIVE_DB_PATH=${ARCHIVE_DB_PATH:-/app/db/chat-archive.sqlite}
+      - ARCHIVE_DB_PATH=/app/db/chat-archive.sqlite
       - TARGET_CHATS=${TARGET_CHATS:-}
       - MAIN_CHATS=${MAIN_CHATS:-}
     ports:
-      - 9087
+      - "9087:9087"
     volumes:
       - telegram_tdlib_db:/app/tdlib-db
       - telegram_tdlib_files:/app/tdlib-files
@@ -94,7 +96,7 @@ volumes:
   telegram_archive_db:
 ```
 
-In the Dokploy environment editor, add at least:
+Create a `.env` file alongside `docker-compose.yml`:
 
 ```env
 TELEGRAM_API_ID=123456
@@ -102,7 +104,17 @@ TELEGRAM_API_HASH=your_api_hash
 SESSION_SECRET=generate-a-long-random-value
 ```
 
-The service listens on container port `9087`. Add a Dokploy domain or proxy for that port and use HTTPS before signing in. Do not create or mount a `.env` file in the container.
+Then start:
+
+```sh
+docker compose up -d
+```
+
+The service listens on container port `9087`. Place a reverse proxy (nginx, Caddy, Traefik, etc.) in front to terminate HTTPS before signing in.
+
+> **Note:** The same Compose file works on Dokploy — just paste it into a Compose service there.
+
+### Image tags
 
 The relay Docker image is published when a matching Git version tag is pushed (for example, `v12.0.29-relay.1-1`). Each release is available at `ghcr.io/graypawn/telegram-web-relay:12.0.29-relay.1-1`; the `latest` tag is updated to the same image. The bundled client version is fixed by `CLIENT_VERSION` in the Dockerfile.
 

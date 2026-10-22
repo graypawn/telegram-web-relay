@@ -58,13 +58,15 @@ graypawn/telegram-web-relay         ← TDLib relay 서버 (이 저장소)
 
 이 조직의 두 프로젝트(`graypawn/telegram-web-relay`와 `graypawn/telegram-web-relay-client`)는 서로 다른 라이선스를 가진 별도 프로세스이며, 네트워크를 통해서만 통신합니다.
 
-## Dokploy 배포
+## Docker 배포
 
 GitHub Actions가 GHCR에 Docker 이미지를 올립니다. 이미지 빌드 중 고정된 `telegram-web-relay-client` 릴리즈를 받아 `/app/client-dist`에 압축 해제합니다.
 
 **현재 버전**: `12.0.29-relay.1-1` (서버) / `12.0.29-relay.1` (클라이언트 번들)
 
-GHCR 패키지를 public으로 만들거나 Dokploy에 GHCR registry 인증을 설정한 뒤, Dokploy Compose 서비스에 아래 YAML을 그대로 붙여 넣으십시오.
+### GHCR 이미지로 Docker Compose 사용
+
+`docker-compose.yml`을 생성합니다.
 
 ```yaml
 services:
@@ -74,14 +76,14 @@ services:
       - TELEGRAM_API_ID=${TELEGRAM_API_ID}
       - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
       - SESSION_SECRET=${SESSION_SECRET}
-      - PORT=${PORT:-9087}
+      - PORT=9087
       - V2_DIST_PATH=/app/client-dist
       - V1_HOST=${V1_HOST:-}
-      - ARCHIVE_DB_PATH=${ARCHIVE_DB_PATH:-/app/db/chat-archive.sqlite}
+      - ARCHIVE_DB_PATH=/app/db/chat-archive.sqlite
       - TARGET_CHATS=${TARGET_CHATS:-}
       - MAIN_CHATS=${MAIN_CHATS:-}
     ports:
-      - 9087
+      - "9087:9087"
     volumes:
       - telegram_tdlib_db:/app/tdlib-db
       - telegram_tdlib_files:/app/tdlib-files
@@ -94,7 +96,7 @@ volumes:
   telegram_archive_db:
 ```
 
-Dokploy 환경변수 편집기에 최소한 다음을 추가합니다.
+`docker-compose.yml` 옆에 `.env` 파일을 생성합니다.
 
 ```env
 TELEGRAM_API_ID=123456
@@ -102,7 +104,17 @@ TELEGRAM_API_HASH=your_api_hash
 SESSION_SECRET=긴_랜덤_문자열
 ```
 
-컨테이너 포트는 `9087`입니다. Dokploy에서 해당 포트에 도메인 또는 proxy를 연결하고, 로그인 전 HTTPS를 사용하십시오. 컨테이너 안에 `.env` 파일을 만들거나 mount할 필요가 없습니다.
+그런 다음 실행합니다.
+
+```sh
+docker compose up -d
+```
+
+서비스는 컨테이너 포트 `9087`에서 대기합니다. 로그인 전 HTTPS를 사용하려면 리버스 프록시(nginx, Caddy, Traefik 등)를 앞에 두십시오.
+
+> **참고:** 이 Compose 파일은 Dokploy에서도 그대로 사용할 수 있습니다. Dokploy의 Compose 서비스에 붙여넣기만 하면 됩니다.
+
+### 이미지 태그
 
 일치하는 Git 버전 태그(예: `v12.0.29-relay.1-1`)를 push하면 Docker 이미지가 배포됩니다. 각 릴리스는 `ghcr.io/graypawn/telegram-web-relay:12.0.29-relay.1-1`로 사용할 수 있으며, `latest` 태그도 동일한 이미지로 갱신됩니다. 포함되는 client 버전은 Dockerfile의 `CLIENT_VERSION`으로 고정합니다.
 
