@@ -113,6 +113,8 @@ const ACCOUNTS = {
     isAuthorized: false,
     initialized: false,
     myUserId: null,   // v0.13: 본인 user_id (Saved Messages 식별용)
+    lastUpdateAt: null,
+    lastErrorAt: null,
   },
   sub: {
     id: 'sub',
@@ -124,6 +126,8 @@ const ACCOUNTS = {
     isAuthorized: false,
     initialized: false,
     myUserId: null,   // v0.13: 본인 user_id (Saved Messages 식별용)
+    lastUpdateAt: null,
+    lastErrorAt: null,
   },
 };
 let activeAccountId = 'main';
@@ -1040,7 +1044,10 @@ async function initAccount(id) {
       databaseDirectory: acc.dbDir,
       filesDirectory: acc.filesDir,
     });
-    acc.client.on('error', (e) => console.error(`[${id}] tdlib error:`, e));
+    acc.client.on('error', (e) => {
+      acc.lastErrorAt = new Date().toISOString();
+      console.error(`[${id}] tdlib error:`, e);
+    });
     acc.client.on('update', (update) => handleUpdate(update, id));
     acc.initialized = true;
     console.log(`✅ TDLib 클라이언트 생성 완료 (${id} = ${acc.label})`);
@@ -1057,6 +1064,8 @@ async function initTdlib() {
 
 // TDLib 업데이트 핸들러
 function handleUpdate(update, accountId = 'main') {
+  const account = ACCOUNTS[accountId];
+  if (account) account.lastUpdateAt = new Date().toISOString();
   // DEBUG: chatAction 이벤트 감지 확인
   if (update._ === 'updateChatAction') {
     console.log(`[DEBUG updateChatAction] raw:`, JSON.stringify(update).substring(0, 300));
@@ -1064,6 +1073,10 @@ function handleUpdate(update, accountId = 'main') {
   switch (update._) {
     case 'updateAuthorizationState':
       ACCOUNTS[accountId].authState = update.authorization_state;
+      if (update.authorization_state?._ !== 'authorizationStateReady') {
+        ACCOUNTS[accountId].isAuthorized = false;
+        if (accountId === activeAccountId) isAuthorized = false;
+      }
       if (accountId === activeAccountId) authState = ACCOUNTS[accountId].authState;
       handleAuthState(ACCOUNTS[accountId].authState, accountId);
       break;
@@ -4064,11 +4077,18 @@ io.on('connection', (socket) => {
 // 헬스체크
 app.get('/health', (req, res) => {
   const sockets = io.sockets.sockets;
+  const active = activeAcc();
   res.json({ 
     status: 'ok', 
     authorized: isAuthorized,
     authState: authState?._,
-    connectedClients: sockets ? sockets.size : 0
+    connectedClients: sockets ? sockets.size : 0,
+    telegram: {
+      account: activeAccountId,
+      initialized: !!active?.initialized,
+      lastUpdateAt: active?.lastUpdateAt || null,
+      lastErrorAt: active?.lastErrorAt || null,
+    },
   });
 });
 
@@ -4078,6 +4098,8 @@ app.get('/api/accounts', (req, res) => {
     id: a.id, label: a.label, initialized: a.initialized,
     isAuthorized: a.isAuthorized, authState: a.authState?._ || null,
     active: a.id === activeAccountId,
+    lastUpdateAt: a.lastUpdateAt || null,
+    lastErrorAt: a.lastErrorAt || null,
   }));
   res.json({ activeAccountId, accounts: list });
 });

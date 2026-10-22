@@ -62,7 +62,7 @@ graypawn/telegram-web-relay         ← TDLib relay 서버 (이 저장소)
 
 GitHub Actions가 GHCR에 Docker 이미지를 올립니다. 이미지 빌드 중 고정된 `telegram-web-relay-client` 릴리즈를 받아 `/app/client-dist`에 압축 해제합니다.
 
-**현재 버전**: `12.0.29-relay.1-1` (서버) / `12.0.29-relay.1` (클라이언트 번들)
+**현재 버전**: `12.0.29-relay.2-1` (서버) / `12.0.29-relay.2` (클라이언트 번들)
 
 ### GHCR 이미지로 Docker Compose 사용
 
@@ -71,7 +71,7 @@ GitHub Actions가 GHCR에 Docker 이미지를 올립니다. 이미지 빌드 중
 ```yaml
 services:
   telegram-web-relay:
-    image: ghcr.io/graypawn/telegram-web-relay:12.0.29-relay.1-1
+    image: ghcr.io/graypawn/telegram-web-relay:12.0.29-relay.2-1
     environment:
       - TELEGRAM_API_ID=${TELEGRAM_API_ID}
       - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
@@ -116,7 +116,7 @@ docker compose up -d
 
 ### 이미지 태그
 
-일치하는 Git 버전 태그(예: `v12.0.29-relay.1-1`)를 push하면 Docker 이미지가 배포됩니다. 각 릴리스는 `ghcr.io/graypawn/telegram-web-relay:12.0.29-relay.1-1`로 사용할 수 있으며, `latest` 태그도 동일한 이미지로 갱신됩니다. 포함되는 client 버전은 Dockerfile의 `CLIENT_VERSION`으로 고정합니다.
+일치하는 Git 버전 태그(예: `v12.0.29-relay.2-1`)를 push하면 Docker 이미지가 배포됩니다. 각 릴리스는 `ghcr.io/graypawn/telegram-web-relay:12.0.29-relay.2-1`로 사용할 수 있으며, `latest` 태그도 동일한 이미지로 갱신됩니다. 포함되는 client 버전은 Dockerfile의 `CLIENT_VERSION`으로 고정합니다.
 
 ## 로컬 Docker 빌드
 
@@ -124,7 +124,7 @@ docker compose up -d
 
 ```sh
 docker build \
-  --build-arg CLIENT_VERSION=12.0.29-relay.1 \
+  --build-arg CLIENT_VERSION=12.0.29-relay.2 \
   -t telegram-web-relay:local .
 ```
 
