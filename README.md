@@ -62,14 +62,14 @@ The two projects in this organization (`graypawn/telegram-web-relay` and `graypa
 
 The GitHub Actions workflow publishes a Docker image to GHCR. During the image build, the fixed `telegram-web-relay-client` release is downloaded and unpacked into `/app/client-dist`.
 
-**Current version**: `12.0.20-relay.6-1` (server) bundling `12.0.20-relay.6` (client)
+**Current version**: `12.0.29-relay.1-1` (server) bundling `12.0.29-relay.1` (client)
 
 Make the GHCR package public, or configure GHCR registry credentials in Dokploy. Then create a Compose service in Dokploy and paste this file:
 
 ```yaml
 services:
   telegram-web-relay:
-    image: ghcr.io/graypawn/telegram-web-relay:12.0.20-relay.6-1
+    image: ghcr.io/graypawn/telegram-web-relay:12.0.29-relay.1-1
     environment:
       - TELEGRAM_API_ID=${TELEGRAM_API_ID}
       - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
@@ -104,7 +104,7 @@ SESSION_SECRET=generate-a-long-random-value
 
 The service listens on container port `9087`. Add a Dokploy domain or proxy for that port and use HTTPS before signing in. Do not create or mount a `.env` file in the container.
 
-The relay Docker image is published when a matching Git version tag is pushed (for example, `v12.0.20-relay.6-1`). Each release is available at `ghcr.io/graypawn/telegram-web-relay:12.0.20-relay.6-1`; the `latest` tag is updated to the same image. The bundled client version is fixed by `CLIENT_VERSION` in the Dockerfile.
+The relay Docker image is published when a matching Git version tag is pushed (for example, `v12.0.29-relay.1-1`). Each release is available at `ghcr.io/graypawn/telegram-web-relay:12.0.29-relay.1-1`; the `latest` tag is updated to the same image. The bundled client version is fixed by `CLIENT_VERSION` in the Dockerfile.
 
 ## Local Docker Build
 
@@ -112,7 +112,7 @@ To build locally with a specific client release:
 
 ```sh
 docker build \
-  --build-arg CLIENT_VERSION=12.0.20-relay.6 \
+  --build-arg CLIENT_VERSION=12.0.29-relay.1 \
   -t telegram-web-relay:local .
 ```
 

@@ -3,7 +3,7 @@ FROM node:22-slim AS builder
 WORKDIR /app
 
 ARG CLIENT_RELEASE_REPO=graypawn/telegram-web-relay-client
-ARG CLIENT_VERSION=12.0.20-relay.6
+ARG CLIENT_VERSION=12.0.29-relay.1
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl unzip python3 make g++ \
