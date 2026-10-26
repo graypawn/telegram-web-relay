@@ -1,6 +1,6 @@
 services:
   telegram-web-relay:
-    image: ghcr.io/graypawn/telegram-web-relay:12.0.29-relay.2-1
+    image: ghcr.io/graypawn/telegram-web-relay:12.0.30-relay.1-1
     environment:
       - TELEGRAM_API_ID=${TELEGRAM_API_ID}
       - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
