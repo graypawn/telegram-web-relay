@@ -1463,6 +1463,137 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
+// Relay-facing bot metadata contract for modern Telegram-tt response shapes.
+// `getBotCommands` remains as a legacy endpoint for already published clients.
+async function getRelayBotCommandDetails(tdClient, rawId) {
+  const id = Number(rawId);
+  const empty = { commands: [], user: null, commonChatsCount: 0 };
+  if (!id || Number.isNaN(id)) return empty;
+
+  let chat = null;
+  try {
+    chat = await tdClient.invoke({ _: 'createPrivateChat', user_id: id, force: true });
+  } catch (e) {
+    // Group and channel chat IDs cannot be materialized as private chats.
+  }
+  if (!chat) {
+    try {
+      chat = await tdClient.invoke({ _: 'getChat', chat_id: id });
+    } catch (e) {
+      console.error('[relay bot commands] getChat failed id', id, e.message);
+      return empty;
+    }
+  }
+
+  const chatType = chat.type?._;
+  if (chatType === 'chatTypeSupergroup' || chatType === 'chatTypeBasicGroup') {
+    const commands = await getRelayGroupBotCommands(tdClient, chat);
+    return { commands, user: null, commonChatsCount: 0, group: true };
+  }
+
+  const userId = Number(chatType === 'chatTypePrivate' ? chat.type.user_id : id);
+  let commands = [];
+  let user = null;
+  try {
+    const fullInfo = await tdClient.invoke({ _: 'getUserFullInfo', user_id: userId });
+    commands = (fullInfo?.bot_info?.commands || [])
+      .filter((command) => command && typeof command.command === 'string')
+      .map((command) => ({ command: command.command, description: command.description || '' }));
+  } catch (e) {
+    console.error('[relay bot commands] getUserFullInfo failed user_id', userId, e.message);
+  }
+  try {
+    user = await tdClient.invoke({ _: 'getUser', user_id: userId });
+  } catch (e) {
+    console.error('[relay bot commands] getUser failed user_id', userId, e.message);
+  }
+
+  let commonChatsCount = 0;
+  try {
+    const commonChats = await tdClient.invoke({
+      _: 'getGroupsInCommon', user_id: userId, offset_chat_id: 0, limit: 1,
+    });
+    commonChatsCount = commonChats?.total_count || 0;
+  } catch (e) {
+    // The current user, bots, and restricted users may not support this lookup.
+  }
+
+  return { commands, user, commonChatsCount };
+}
+
+async function getRelayGroupBotCommands(tdClient, chat) {
+  let commands = [];
+  try {
+    const fullInfo = chat.type?._ === 'chatTypeSupergroup'
+      ? await tdClient.invoke({ _: 'getSupergroupFullInfo', supergroup_id: chat.type.supergroup_id })
+      : await tdClient.invoke({ _: 'getBasicGroupFullInfo', basic_group_id: chat.type.basic_group_id });
+    for (const botCommands of (fullInfo?.bot_commands || [])) {
+      const botId = String(botCommands.bot_user_id || '');
+      for (const command of (botCommands.commands || [])) {
+        if (command && typeof command.command === 'string' && botId) {
+          commands.push({ command: command.command, description: command.description || '', botId });
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[relay group bot commands] full info failed id', chat.id, e.message);
+  }
+
+  if (commands.length) return commands;
+
+  try {
+    let memberUserIds = [];
+    if (chat.type?._ === 'chatTypeSupergroup') {
+      const members = await tdClient.invoke({
+        _: 'getSupergroupMembers',
+        supergroup_id: chat.type.supergroup_id,
+        filter: { _: 'supergroupMembersFilterBots' },
+        offset: 0,
+        limit: 200,
+      });
+      memberUserIds = (members?.members || [])
+        .map((member) => Number(member.member_id?.user_id || member.user_id || 0))
+        .filter(Boolean);
+    } else {
+      const fullInfo = await tdClient.invoke({
+        _: 'getBasicGroupFullInfo', basic_group_id: chat.type.basic_group_id,
+      });
+      memberUserIds = (fullInfo?.members || [])
+        .map((member) => Number(member.member_id?.user_id || member.user_id || 0))
+        .filter(Boolean);
+    }
+
+    for (const userId of memberUserIds) {
+      try {
+        const user = await tdClient.invoke({ _: 'getUser', user_id: userId });
+        if (user?.type?._ !== 'userTypeBot') continue;
+        const fullInfo = await tdClient.invoke({ _: 'getUserFullInfo', user_id: userId });
+        for (const command of (fullInfo?.bot_info?.commands || [])) {
+          if (command && typeof command.command === 'string') {
+            commands.push({ command: command.command, description: command.description || '', botId: String(userId) });
+          }
+        }
+      } catch (e) {
+        // One inaccessible bot must not prevent the remaining commands.
+      }
+    }
+  } catch (e) {
+    console.error('[relay group bot commands] member fallback failed id', chat.id, e.message);
+  }
+
+  return commands;
+}
+
+function buildRelayBotCommands(botId, commands) {
+  return (commands || [])
+    .filter((command) => command && typeof command.command === 'string')
+    .map((command) => ({
+      botId: String(command.botId || botId),
+      command: command.command,
+      description: command.description || '',
+    }));
+}
+
 io.on('connection', (socket) => {
   console.log('클라이언트 연결:', socket.id);
 
@@ -3040,10 +3171,51 @@ io.on('connection', (socket) => {
           break;
         }
         case 'fetchPinnedMessages':
-        case 'abortChatRequests':
-        case 'fetchFullChat': {
+        case 'abortChatRequests': {
           // stub — 아직 미구현이지만 timeout 에러 방지
           result = null;
+          break;
+        }
+        case 'fetchFullUser': {
+          const details = await getRelayBotCommandDetails(client, params?.id);
+          if (!details.user) {
+            result = null;
+            break;
+          }
+          const user = buildApiUserFromTdlibUser(details.user, activeAccountId);
+          const botCommands = buildRelayBotCommands(user.id, details.commands);
+          result = {
+            user,
+            fullInfo: {
+              ...(botCommands.length ? {
+                botInfo: {
+                  botId: user.id,
+                  commands: botCommands,
+                  menuButton: { type: 'commands' },
+                },
+              } : {}),
+              ...(typeof details.commonChatsCount === 'number' ? { commonChatsCount: details.commonChatsCount } : {}),
+            },
+            users: [],
+            chats: [],
+            userStatusesById: {},
+          };
+          break;
+        }
+        case 'fetchFullChat': {
+          const chatId = Number(params?.id ?? params?.chatId);
+          const details = await getRelayBotCommandDetails(client, chatId);
+          const botCommands = buildRelayBotCommands(
+            details.user?.id || chatId,
+            details.commands,
+          );
+          // Preserve the historical relay behaviour: unrelated chats return
+          // no replacement fullInfo rather than wiping existing TT state.
+          result = botCommands.length ? {
+            fullInfo: { botCommands },
+            chats: [],
+            userStatusesById: {},
+          } : null;
           break;
         }
         case 'fetchCommonChats': {
