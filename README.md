@@ -62,7 +62,7 @@ The two projects in this organization (`graypawn/telegram-web-relay` and `graypa
 
 The GitHub Actions workflow publishes a Docker image to GHCR. During the image build, the fixed `telegram-web-relay-client` release is downloaded and unpacked into `/app/client-dist`.
 
-**Current version**: `12.0.31-relay.1-1` (server) bundling `12.0.31` (client)
+**Current version**: `12.0.31-relay.1-1` (server) bundling `12.0.31-relay.1` (client)
 
 ### Using GHCR image with Docker Compose
 
@@ -124,7 +124,7 @@ To build locally with a specific client release:
 
 ```sh
 docker build \
-  --build-arg CLIENT_VERSION=12.0.31 \
+  --build-arg CLIENT_VERSION=12.0.31-relay.1 \
   -t telegram-web-relay:local .
 ```
 

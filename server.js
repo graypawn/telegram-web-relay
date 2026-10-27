@@ -113,6 +113,9 @@ const ACCOUNTS = {
     isAuthorized: false,
     initialized: false,
     myUserId: null,   // v0.13: 본인 user_id (Saved Messages 식별용)
+    // TDLib 는 Saved Messages 토픽을 updateSavedMessagesTopic 으로만 전달한다.
+    // fetchSavedChats 응답을 만들기 위해 계정별로 마지막 토픽 상태를 보관한다.
+    savedMessagesTopics: new Map(),
     lastUpdateAt: null,
     lastErrorAt: null,
   },
@@ -126,6 +129,7 @@ const ACCOUNTS = {
     isAuthorized: false,
     initialized: false,
     myUserId: null,   // v0.13: 본인 user_id (Saved Messages 식별용)
+    savedMessagesTopics: new Map(),
     lastUpdateAt: null,
     lastErrorAt: null,
   },
@@ -396,6 +400,104 @@ function buildApiUserFromTdlibUser(u, activeAccountId) {
     isCloseFriend: u.is_close_friend || undefined,
     avatarPhotoId,
     hasVideoAvatar: !!u.profile_photo?.has_animation,
+  };
+}
+
+// telegram-tt v20+ 는 Saved Messages의 대화별 목록을 fetchSavedChats로 요청한다.
+// TDLib는 loadSavedMessagesTopics의 결과를 updateSavedMessagesTopic으로 전달하므로,
+// 계정 캐시(ACCOUNTS[*].savedMessagesTopics)를 API 응답 형태로 변환한다.
+async function buildSavedMessagesTopicsResult(tdClient, accountId, params = {}) {
+  const account = ACCOUNTS[accountId];
+  const parentId = Number(params.parentPeer?.id || account?.myUserId);
+  const empty = {
+    chatIds: [],
+    chats: [],
+    users: [],
+    userStatusesById: {},
+    orderedPinnedIds: [],
+    totalChatCount: 0,
+    lastMessageByChatId: {},
+    messages: [],
+    draftsById: {},
+    notifyExceptionById: {},
+    threadInfos: [],
+  };
+
+  // monoforum Saved Dialogs는 relay가 아직 제공하지 않는 별도 기능이다.
+  // 일반 Saved Messages(parentPeer = current user)만 처리한다.
+  if (!account || !parentId || (account.myUserId && parentId !== Number(account.myUserId))) {
+    return empty;
+  }
+
+  const limit = Math.max(1, Math.min(Number(params.limit) || 50, 100));
+  try {
+    await tdClient.invoke({ _: 'loadSavedMessagesTopics', limit });
+  } catch (e) {
+    // TDLib는 더 불러올 토픽이 없을 때 404를 반환한다. 이미 받은 캐시는 그대로 사용한다.
+    if (!/404|not found/i.test(e.message || '')) {
+      console.error('[fetchSavedChats] loadSavedMessagesTopics failed:', e.message);
+    }
+  }
+
+  const topics = Array.from(account.savedMessagesTopics.values())
+    .filter((topic) => topic?.type?._ === 'savedMessagesTopicTypeSavedFromChat'
+      && Number.isSafeInteger(Number(topic.type.chat_id)))
+    .sort((a, b) => Number(b.order || 0) - Number(a.order || 0))
+    .slice(0, limit);
+
+  const chats = [];
+  const users = [];
+  const chatIds = [];
+  const orderedPinnedIds = [];
+  const lastMessageByChatId = {};
+  const messages = [];
+  const threadInfos = [];
+
+  for (const topic of topics) {
+    const sourceChatId = Number(topic.type.chat_id);
+    try {
+      const sourceChat = await tdClient.invoke({ _: 'getChat', chat_id: sourceChatId });
+      const apiChat = await buildApiChatWithStatus(tdClient, sourceChat, { activeAccountId: accountId });
+      const chatId = String(apiChat.id);
+      chats.push(apiChat);
+      chatIds.push(chatId);
+      if (topic.is_pinned) orderedPinnedIds.push(chatId);
+      if (topic.last_message) {
+        lastMessageByChatId[chatId] = topic.last_message.id;
+        messages.push(buildSharedApiMessage(topic.last_message, parentId));
+      }
+      threadInfos.push({
+        isCommentsInfo: false,
+        chatId: String(parentId),
+        // telegram-tt는 SavedDialog의 peer(chat_id)를 thread id로 사용한다.
+        // TDLib의 topic.id와 같다고 가정하지 않고, history 요청 시 캐시에서 다시 찾는다.
+        threadId: sourceChatId,
+        lastMessageId: topic.last_message?.id,
+      });
+      if (sourceChat.type?._ === 'chatTypePrivate' && sourceChat.type.user_id) {
+        try {
+          const user = await tdClient.invoke({ _: 'getUser', user_id: sourceChat.type.user_id });
+          if (user) users.push(buildApiUserFromTdlibUser(user, accountId));
+        } catch (e) {
+          console.error('[fetchSavedChats] getUser failed:', e.message);
+        }
+      }
+    } catch (e) {
+      // 접근할 수 없게 된 원본 채팅은 토픽 목록 전체를 막지 않고 건너뛴다.
+      console.error('[fetchSavedChats] getChat failed:', e.message);
+    }
+  }
+
+  return {
+    ...empty,
+    chatIds,
+    chats,
+    users,
+    orderedPinnedIds,
+    totalChatCount: chatIds.length,
+    lastMessageByChatId,
+    messages,
+    threadInfos,
   };
 }
 
@@ -1080,6 +1182,15 @@ function handleUpdate(update, accountId = 'main') {
       if (accountId === activeAccountId) authState = ACCOUNTS[accountId].authState;
       handleAuthState(ACCOUNTS[accountId].authState, accountId);
       break;
+    case 'updateSavedMessagesTopic': {
+      // loadSavedMessagesTopics 의 결과는 반환값이 아니라 이 update 로 전달된다.
+      // 토픽 id 는 Saved Messages 전용 history 요청에도 사용된다.
+      const topic = update.topic;
+      if (topic?.id && account) {
+        account.savedMessagesTopics.set(String(topic.id), topic);
+      }
+      break;
+    }
     case 'updateNewMessage':
       console.log('[newMessage] id:', update.message?.id, 'chat:', update.message?.chat_id, 'sending_state:', update.message?.sending_state?._, 'account:', accountId);
       if (update.message) update.message._account = accountId;
@@ -2689,6 +2800,12 @@ io.on('connection', (socket) => {
           };
           break;
         }
+        case 'fetchSavedChats': {
+          // v20+ Saved Messages 대화별 목록. TDLib는 결과를 updateSavedMessagesTopic
+          // 으로 전달하므로, update 캐시를 telegram-tt가 기대하는 ChatListData로 변환한다.
+          result = await buildSavedMessagesTopicsResult(client, activeAccountId, params);
+          break;
+        }
         case 'fetchMessages': {
           const chatId = (params && params.chat && params.chat.id) || (params && params.chatId);
           const numChatId = Number(chatId);
@@ -2696,38 +2813,55 @@ io.on('connection', (socket) => {
             throw new Error(`Invalid chat ID for history: ${chatId}`);
           }
 
+          const isSavedDialog = !!params?.isSavedDialog;
+          const savedDialogThreadId = Number(params?.threadId ?? params?.savedMessagesTopicId);
+          const savedTopic = Array.from(ACCOUNTS[activeAccountId]?.savedMessagesTopics?.values() || [])
+            .find((topic) => Number(topic?.type?.chat_id) === savedDialogThreadId);
+          const savedTopicId = Number(savedTopic?.id ?? params?.savedMessagesTopicId ?? savedDialogThreadId);
+          // Main thread(-1)는 본인과의 일반 Saved Messages 채팅이며 getChatHistory로
+          // 읽는다. 대화별 Saved Dialog만 getSavedMessagesTopicHistory를 사용한다.
+          const isSavedTopic = isSavedDialog
+            && Number.isSafeInteger(savedDialogThreadId)
+            && savedDialogThreadId !== 0
+            && savedDialogThreadId !== -1
+            && Number.isSafeInteger(savedTopicId);
+
           // A freshly restarted TDLib instance can return only its local cache
           // until the chat is opened. The legacy getMessages path already does
           // this; keep the API bridge on the same initialization path.
-          if (!(params && params.offsetId)) {
+          if (!isSavedTopic && !(params && params.offsetId)) {
             await client.invoke({ _: 'openChat', chat_id: numChatId });
             await new Promise((resolve) => setTimeout(resolve, 300));
           }
 
-          let msgs = await client.invoke({
-            '@type': 'getChatHistory',
-            chat_id: numChatId,
+          const historyParams = {
             from_message_id: (params && params.offsetId) || 0,
             offset: (params && params.addOffset) || 0,
-            limit: (params && params.limit) || 30,
-            only_local: false
-          });
+            limit: Math.max(1, Math.min(Number((params && params.limit) || 30), 100)),
+          };
+          const loadHistory = () => (isSavedTopic
+            ? client.invoke({
+              _: 'getSavedMessagesTopicHistory',
+              saved_messages_topic_id: savedTopicId,
+              ...historyParams,
+            })
+            : client.invoke({
+              _: 'getChatHistory',
+              chat_id: numChatId,
+              ...historyParams,
+              only_local: false,
+            }));
+
+          let msgs = await loadHistory();
 
           // TDLib may finish hydrating the remote history just after openChat.
           // Retry once so the initial viewport is not permanently empty.
-          if (!(params && params.offsetId) && !msgs?.messages?.length) {
+          if (!isSavedTopic && !(params && params.offsetId) && !msgs?.messages?.length) {
             await new Promise((resolve) => setTimeout(resolve, 200));
-            msgs = await client.invoke({
-              '@type': 'getChatHistory',
-              chat_id: numChatId,
-              from_message_id: 0,
-              offset: (params && params.addOffset) || 0,
-              limit: (params && params.limit) || 30,
-              only_local: false
-            });
+            msgs = await loadHistory();
           }
 
-          console.log(`[fetchMessages] chatId=${numChatId}, offsetId=${params?.offsetId || 0}, count=${msgs?.messages?.length || 0}`);
+          console.log(`[fetchMessages] chatId=${numChatId}, savedTopic=${isSavedTopic ? savedTopicId : '-'}, offsetId=${params?.offsetId || 0}, count=${msgs?.messages?.length || 0}`);
           const apiMessages = [];
           for (const m of ((msgs && msgs.messages) || [])) {
             try { await maybeFlattenRich(m, client); }

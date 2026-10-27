@@ -62,7 +62,7 @@ graypawn/telegram-web-relay         ← TDLib relay 서버 (이 저장소)
 
 GitHub Actions가 GHCR에 Docker 이미지를 올립니다. 이미지 빌드 중 고정된 `telegram-web-relay-client` 릴리즈를 받아 `/app/client-dist`에 압축 해제합니다.
 
-**현재 버전**: `12.0.31-relay.1-1` (서버) / `12.0.31` (클라이언트 번들)
+**현재 버전**: `12.0.31-relay.1-1` (서버) / `12.0.31-relay.1` (클라이언트 번들)
 
 ### GHCR 이미지로 Docker Compose 사용
 
@@ -124,7 +124,7 @@ docker compose up -d
 
 ```sh
 docker build \
-  --build-arg CLIENT_VERSION=12.0.31 \
+  --build-arg CLIENT_VERSION=12.0.31-relay.1 \
   -t telegram-web-relay:local .
 ```
 
